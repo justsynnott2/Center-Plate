@@ -23,6 +23,12 @@ export async function createUserController(req, res) {
         res.status(201).json(user);
     } catch (e) {
         logger.error("Error in createUserController: %s", e.message);
+        if (e.message === "Username already taken" || e.message === "Email already registered") {
+            return res.status(409).json({ 
+                error: "Conflict",
+                details: e.message 
+            });
+        }
         if (e.name === 'ValidationError') {
             return res.status(400).json({ 
                 error: "Validation Error",
@@ -83,6 +89,12 @@ export async function updateUserController(req, res) {
         res.status(200).json(user);
     } catch (e) {
         logger.error("Error in updateUserController: %s", e.message);
+        if (e.message === "Username already taken" || e.message === "Email already registered") {
+            return res.status(409).json({ 
+                error: "Conflict",
+                details: e.message 
+            });
+        }
         if (e.name === 'ValidationError') {
             return res.status(400).json({ 
                 error: "Validation Error",

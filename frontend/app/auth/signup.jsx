@@ -85,7 +85,22 @@ export default function Signup() {
             await handleSignup(formData.username, formData.email, formData.password);
             router.replace('/home');
         } catch (error) {
-            setErrors(prev => ({ ...prev, general: error.message }));
+                // Check for specific error types and display them in the appropriate field
+                if (error.message.includes('username is already taken') || error.message.includes('Username already taken')) {
+                    setErrors(prev => ({ 
+                        ...prev, 
+                        username: 'This username is already taken. Please choose another.',
+                        general: ''
+                    }));
+                } else if (error.message.includes('email is already registered') || error.message.includes('Email already registered')) {
+                    setErrors(prev => ({ 
+                        ...prev, 
+                        email: 'This email is already registered. Please use a different email or login.',
+                        general: ''
+                    }));
+                } else {
+                    setErrors(prev => ({ ...prev, general: error.message }));
+                }
         } finally {
             setLoading(false);
         }

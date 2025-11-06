@@ -25,7 +25,7 @@
     "axios": "^1.7.9",
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
-    "expo": "~53.0.8",
+    "expo": "^54.0.2",
     "expo-checkbox": "~4.1.4",
     "expo-constants": "~17.1.6",
     "expo-font": "~13.3.1",
@@ -58,7 +58,8 @@
     "react-native-web": "^0.20.0",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
-    "expo-updates": "~0.28.12"
+    "expo-updates": "~0.28.12",
+    "expo-dev-client": "~5.2.4"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

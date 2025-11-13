@@ -536,6 +536,11 @@ const SessionDetails = () => {
                         onPress={() => router.replace(`/session/${id}`)}
                         variant="primary"
                     />
+                    <Button
+                        title="Delete Session"
+                        onPress={() => Alert.alert('Delete Session', 'Are you sure you want to delete this session?', [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', onPress: handleDeleteSession, style: 'destructive' }])}
+                        variant="danger"
+                    />
                 </View>
             </View>
         );

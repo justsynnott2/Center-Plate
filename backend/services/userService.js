@@ -344,7 +344,7 @@ export async function updatePreferences(uid, preferences) {
             throw new Error("User not found");
         }
         console.log('Received preferences:', preferences);
-        user.preferences = preferences;
+        Object.assign(user.preferences, preferences);
         const updatedUser = await user.save();
         logger.info("Preferences updated: %j", updatedUser);
         return updatedUser;

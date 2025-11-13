@@ -55,7 +55,7 @@ export default function Index() {
 					/>
 					<Button
 						title="Learn More"
-						onPress={() => router.push('/about')}
+						onPress={() => router.push('/learn-more')}
 						variant="outlined"
 						icon="info-circle"
 					/>

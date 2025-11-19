@@ -38,10 +38,13 @@ const getFirebaseErrorMessage = (error) => {
 
 export const signup = async (email, password, username) => {
     try {
+        // 1) Create Firebase user first
         await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(auth.currentUser, { displayName: username });
         
         const user = auth.currentUser;
+        
+        // 2) Try to create DB user
         try {
             await UserService.createUser({
                 _id: user.uid,
@@ -52,7 +55,7 @@ export const signup = async (email, password, username) => {
         } catch (error) {
             // Check for specific error messages from backend
             if (error.message.includes('Username already taken')) {
-                // For username conflicts, force user to pick a new one and do not keep them logged in
+                // For username conflicts, delete Firebase user and force user to pick a new one
                 try {
                     await deleteUser(user);
                     await signOut(auth);
@@ -60,13 +63,15 @@ export const signup = async (email, password, username) => {
                 throw new Error('This username is already taken. Please choose a different username.');
             }
             if (error.message.includes('Email already registered')) {
+                // For email conflicts, delete Firebase user
                 try {
                     await deleteUser(user);
                     await signOut(auth);
                 } catch (_) {}
                 throw new Error('This email is already registered. Please use a different email or login.');
             }
-            // For other backend errors (network, server), proceed with login and let backend auto-create on first request
+            // For other backend errors (network, server), keep user logged in
+            // Backend middleware will auto-create the DB user on first authenticated request
             console.warn('[authService] Backend user creation failed; proceeding with logged-in Firebase user:', error.message);
             return user;
         }

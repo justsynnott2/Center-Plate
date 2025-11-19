@@ -29,7 +29,6 @@ function AuthGuard({ children }) {
 
     const currentRoute = segments[0];
     const inAuthGroup = currentRoute === 'auth';
-    const isSignupRoute = currentRoute === 'auth/signup';
     
     // Check if current route requires authentication
     const isProtectedRoute = PROTECTED_ROUTES.some(route => 
@@ -39,8 +38,8 @@ function AuthGuard({ children }) {
     if (!user && isProtectedRoute) {
       // Redirect to login if trying to access protected route while not authenticated
       router.replace('/auth/login');
-    } else if (user && inAuthGroup && !isSignupRoute) {
-      // Redirect to home if authenticated and trying to access auth pages
+    } else if (user && inAuthGroup) {
+      // Redirect to home if authenticated and on any auth page (login, signup, recover)
       router.replace('/home');
     }
   }, [user, loading, segments]);

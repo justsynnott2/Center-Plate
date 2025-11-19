@@ -17,11 +17,21 @@ class BaseApiService {
         this.api.interceptors.request.use(
             async (config) => {
                 console.log('[baseApiService] Making request to:', config.baseURL + config.url);
+                console.log('[baseApiService] Request method:', config.method);
+                console.log('[baseApiService] Request URL:', config.url);
                 
-                // Skip auth token for user creation
+                // Skip auth token for public endpoints
+                // Note: config.url is relative to baseURL (e.g., '/users' not '/api/users')
                 if (config.url === '/users' && config.method === 'post') {
+                    console.log('[baseApiService] Skipping auth for POST /users (public endpoint)');
                     return config;
                 }
+                if (config.url === '/users/availability' && config.method === 'get') {
+                    console.log('[baseApiService] Skipping auth for GET /users/availability (public endpoint)');
+                    return config;
+                }
+                
+                console.log('[baseApiService] Attempting to get auth token...');
                 const token = await this.getAuthToken();
                 config.headers.Authorization = `Bearer ${token}`;
                 return config;
@@ -51,21 +61,15 @@ class BaseApiService {
                     return Promise.reject(new Error(''));
                 }
                 
-                // Handle 401 Unauthorized: silently sign out and suppress UI error pages
+                // Handle 401 Unauthorized: just pass through the error without signing out
+                // Let the AuthGuard and app logic handle auth state naturally
                 if (error.response?.status === 401) {
-                    console.warn('[baseApiService] 401 Unauthorized - signing out silently and suppressing error message');
-                    try {
-                        if (!this._isSigningOut) {
-                            this._isSigningOut = true;
-                            signOut(this.auth).catch(() => {}).finally(() => {
-                                // allow future signOut attempts
-                                setTimeout(() => { this._isSigningOut = false; }, 500);
-                            });
-                        }
-                    } catch (_) {
-                        // ignore
-                    }
-                    return Promise.reject(new Error(''));
+                    console.warn('[baseApiService] 401 Unauthorized - passing through error');
+                    const errorMessage = error.response?.data?.details || 
+                                       error.response?.data?.message || 
+                                       error.response?.data?.error || 
+                                       'Unauthorized';
+                    throw new Error(errorMessage);
                 }
                 
                 // Extract error message from the backend response

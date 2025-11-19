@@ -1,6 +1,9 @@
 import baseApiService from './baseApiService';
 
 class UserService {
+    async checkAvailability({ username, email }) {
+        return baseApiService.get('/users/availability', { params: { username, email } });
+    }
     async searchUsers(query) {
         return baseApiService.get('/users/search', {params: {query}});
     }

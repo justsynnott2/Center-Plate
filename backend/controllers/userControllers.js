@@ -1,5 +1,6 @@
 import {
     createUser,
+    checkAvailability,
     getAllUsers,
     getUserById,
     updateUser,
@@ -15,6 +16,20 @@ import {
     setDefaultLocation
 } from '../services/userService.js';
 import logger from '../logger.js';
+
+export async function checkAvailabilityController(req, res) {
+    try {
+        const { username = '', email = '' } = req.query;
+        const result = await checkAvailability({ username, email });
+        return res.status(200).json(result);
+    } catch (e) {
+        logger.error("Error in checkAvailabilityController: %s", e.message);
+        return res.status(500).json({
+            error: "Internal Server Error",
+            details: e.message
+        });
+    }
+}
 
 export async function createUserController(req, res) {
     try {

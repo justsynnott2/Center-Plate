@@ -3,34 +3,63 @@ import logger from "../logger.js";
 import { Session } from "../models/Session.js";
 import mongoose from 'mongoose';
 
+export async function checkAvailability({ username, email }) {
+    try {
+        logger.info("Checking availability for username: %s, email: %s", username, email);
+        let usernameAvailable = true;
+        let emailAvailable = true;
+
+        if (typeof username === 'string' && username.trim().length > 0) {
+            const existingUserByUsername = await User.findOne({ username });
+            usernameAvailable = !existingUserByUsername;
+        }
+
+        if (typeof email === 'string' && email.trim().length > 0) {
+            const existingUserByEmail = await User.findOne({ email });
+            emailAvailable = !existingUserByEmail;
+        }
+
+        return { usernameAvailable, emailAvailable };
+    } catch (e) {
+        logger.error("Error checking availability: %s", e.message);
+        throw new Error("Error checking availability: " + e.message);
+    }
+}
+
 export async function createUser(userData) {
     try {
-        logger.info("Creating user with data: %j", userData);
+        ///logger.info("Creating user with data: %j", userData);
         if (!userData._id || typeof userData._id !== 'string') {
             throw new Error("Invalid user ID format");
         }
         if (!userData.username || typeof userData.username !== 'string') {
             throw new Error("Invalid username format");
         }
+
+        userData.username = userData.username.trim();
+        if(userData.username.length < 3){
+            throw new Error("Invalid username format");
+        }
+
         if (!userData.email || typeof userData.email !== 'string') {
             throw new Error("Invalid email format");
         }
         
-        // Check if username already exists
-        const existingUserByUsername = await User.findOne({ username: userData.username });
+        // Check if username already exists -- ignore casing
+        const existingUserByUsername = await User.findOne({username: new RegExp(`^${userData.username}$`, "i")});
         if (existingUserByUsername) {
             throw new Error("Username already taken");
         }
         
-        // Check if email already exists
-        const existingUserByEmail = await User.findOne({ email: userData.email });
+        // Check if email already exists -- ignore casing
+        const existingUserByEmail = await User.findOne({ email: new RegExp(`^${userData.email}$`, "i") });
         if (existingUserByEmail) {
             throw new Error("Email already registered");
         }
         
         const newUser = new User(userData);
         const savedUser = await newUser.save();
-        logger.info("User created with id: %s", savedUser._id);
+        ///logger.info("User created with id: %s", savedUser._id);
         return savedUser;
     } catch(e) {
         if (e.message === "Invalid user ID format") {

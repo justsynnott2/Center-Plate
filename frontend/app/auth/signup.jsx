@@ -8,10 +8,11 @@ import TextInput from '../../components/common/TextInput.jsx';
 import Button from '../../components/common/Button.jsx';
 import Card from '../../components/common/Card.jsx';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import UserService from '../../services/userService.js';
 
 export default function Signup() {
     const router = useRouter();
-    const { handleSignup } = useAuth();
+    const { handleSignup, user } = useAuth();
     const [formData, setFormData] = useState({
         username: '',
         email: '',
@@ -28,6 +29,43 @@ export default function Signup() {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [waitingForBackend, setWaitingForBackend] = useState(false);
+
+    // Poll backend to verify user creation after successful Firebase signup
+    useEffect(() => {
+        if (!waitingForBackend || !user) return;
+
+        let pollCount = 0;
+        const maxPolls = 10; // Try for ~5 seconds
+        const pollInterval = 500; // Check every 500ms
+
+        const checkBackendUser = async () => {
+            try {
+                const userData = await UserService.getUser(user.uid);
+                if (userData) {
+                    console.log('[Signup] Backend user created successfully');
+                    setWaitingForBackend(false);
+                    setLoading(false);
+                    // Now let AuthGuard redirect to home
+                    router.replace('/home');
+                }
+            } catch (error) {
+                console.log('[Signup] Backend user not ready yet, retrying...', error.message);
+                pollCount++;
+                if (pollCount >= maxPolls) {
+                    console.log('[Signup] Max poll attempts reached, proceeding anyway');
+                    setWaitingForBackend(false);
+                    setLoading(false);
+                    // Proceed to home even if backend isn't ready - it will auto-create on first API call
+                    router.replace('/home');
+                } else {
+                    setTimeout(checkBackendUser, pollInterval);
+                }
+            }
+        };
+
+        checkBackendUser();
+    }, [waitingForBackend, user]);
 
     const handleChange = (field) => (value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -80,10 +118,16 @@ export default function Signup() {
             if (!validateForm()) return;
             
             setLoading(true);
-            setErrors(prev => ({ ...prev, general: '' }));
-        
-            await handleSignup(formData.username, formData.email, formData.password);
-            router.replace('/home');
+            try{
+                await handleSignup(formData.username, formData.email, formData.password);
+                // Set flag to start polling for backend user creation
+                setWaitingForBackend(true);
+            }
+            catch(e){
+                console.log(e);
+                throw e;
+            }
+            // Don't navigate manually - wait for backend user verification first
         } catch (error) {
                 // Check for specific error types and display them in the appropriate field
                 if (error.message.includes('username is already taken') || error.message.includes('Username already taken')) {
@@ -116,7 +160,6 @@ export default function Signup() {
                 variant="primary"
                 style={styles.header}
             />
-
             <ScrollView 
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
@@ -131,7 +174,6 @@ export default function Signup() {
                         leftIcon={<Icon name="user" size={20} color={theme.colors.text.secondary} />}
                         error={errors.username}
                     />
-
                     <TextInput
                         label="Email"
                         value={formData.email}
@@ -142,7 +184,6 @@ export default function Signup() {
                         leftIcon={<Icon name="envelope" size={20} color={theme.colors.text.secondary} />}
                         error={errors.email}
                     />
-
                     <View style={styles.passwordContainer}>
                         <TextInput
                             label="Password"
@@ -164,7 +205,6 @@ export default function Signup() {
                             />
                         </TouchableOpacity>
                     </View>
-            
                     <View style={styles.passwordContainer}>
                         <TextInput
                             label="Confirm Password"
@@ -186,11 +226,10 @@ export default function Signup() {
                             />
                         </TouchableOpacity>
                     </View>
-
+                    {/* Only show general error for username/email conflicts, not for backend/server errors */}
                     {errors.general ? (
                         <Text style={styles.errorText}>{errors.general}</Text>
                     ) : null}
-
                     <View style={styles.buttonContainer}>
                         <Button
                             title="Create Account"
@@ -199,7 +238,6 @@ export default function Signup() {
                             disabled={loading}
                             fullWidth
                         />
-
                         <Button
                             title="Already have an account? Login"
                             variant="text"
@@ -223,33 +261,6 @@ const styles = StyleSheet.create({
         borderBottomRightRadius: theme.borderRadius.lg,
         ...theme.shadows.md,
     },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        padding: theme.spacing.lg,
-    },
-    formCard: {
-        marginBottom: theme.spacing.lg,
-    },
-    passwordContainer: {
-        position: 'relative',
-    },
-    eyeIcon: {
-        position: 'absolute',
-        right: theme.spacing.md,
-        top: '50%',
-        transform: [{ translateY: -10 }],
-        padding: theme.spacing.xs,
-    },
-    errorText: {
-        color: theme.colors.status.error,
-        fontSize: theme.typography.fontSize.sm,
-        marginTop: theme.spacing.xs,
-        textAlign: 'center',
-    },
     buttonContainer: {
-        gap: theme.spacing.sm,
-    },
-});
-  
+        gap: theme.spacing.sm
+    }});

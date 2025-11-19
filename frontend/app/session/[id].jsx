@@ -45,6 +45,12 @@ const SessionDetails = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // Clear 'User not found' errors automatically
+    useEffect(() => {
+        if (error && error.toLowerCase().includes('user not found')) {
+            setError(null);
+        }
+    }, [error]);
 
     useEffect(() => {
         if (loadingUserData || loadingSession || loadingLocation || loadingMidpointandRestaurants) {
@@ -111,12 +117,20 @@ const SessionDetails = () => {
                 setLoadingUserData(true);
                 const userData = await UserService.getUser(user.uid);
                 if (!userData) {
-                    throw new Error('User not found');
+                    // Suppress 'User not found' error after signup, just handle silently
+                    setUserData(null);
+                    return;
                 }
                 setUserData(userData);
-            } catch (error) {   
-                setError(error.message);
-                console.error('Error fetching user data:', error.message);
+            } catch (error) {
+                if (error.message && error.message.toLowerCase().includes('user not found')) {
+                    // Suppress error page for 'User not found' after signup - don't set error state
+                    console.warn('[Session] User not found error suppressed:', error.message);
+                    setUserData(null);
+                } else {
+                    setError(error.message);
+                    console.error('Error fetching user data:', error.message);
+                }
             } finally {
                 setLoadingUserData(false);
             }
@@ -136,8 +150,13 @@ const SessionDetails = () => {
                 }
                 setCurrentSession(session);
             } catch (error) {
-                setError(error.message);
-                console.error('Error fetching session:', error.message);
+                if (error.message && error.message.toLowerCase().includes('user not found')) {
+                    // Suppress error page for 'User not found' - don't set error state
+                    console.warn('[Session] User not found error in session fetch suppressed:', error.message);
+                } else {
+                    setError(error.message);
+                    console.error('Error fetching session:', error.message);
+                }
             } finally {
                 setLoadingSession(false);
             }

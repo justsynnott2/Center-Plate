@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase/firebaseConfig.js';
 import { login, signup, logout, remove, updateUsername, sendPasswordReset } from '../firebase/authService.js';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AuthContext = createContext();
 
@@ -10,8 +11,29 @@ export const AuthProvider = ({ children }) => {
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(null);
 
+	// Debug: Check AsyncStorage on mount
+	useEffect(() => {
+		console.log('[AuthContext] Component mounted, checking AsyncStorage...');
+		AsyncStorage.getAllKeys()
+			.then(keys => {
+				console.log('[AuthContext] AsyncStorage keys:', keys);
+				// Look for Firebase-related keys
+				const firebaseKeys = keys.filter(k => k.includes('firebase') || k.includes('auth'));
+				console.log('[AuthContext] Firebase-related keys:', firebaseKeys);
+			})
+			.catch(err => {
+				console.error('[AuthContext] Failed to read AsyncStorage:', err);
+			});
+	}, []);
+
 	useEffect(() => {
 		const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
+			console.log('[AuthContext] onAuthStateChanged triggered');
+			console.log('[AuthContext] User state:', authUser ? {
+				uid: authUser.uid,
+				email: authUser.email,
+				displayName: authUser.displayName
+			} : 'null (logged out)');
 			setUser(authUser);
 			setLoading(false);
 		});

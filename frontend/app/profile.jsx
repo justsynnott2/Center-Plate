@@ -13,11 +13,15 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 
 export default function Profile() {
   const router = useRouter();
-    const { user, updateProfile, handleLogout } = useAuth();
+    const { user, handleUpdateUsername, handleLogout } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({
         displayName: user?.displayName || '',
         email: user?.email || '',
+    });
+    const [errors, setErrors] = useState({
+        displayName: '',
+        email: '',
     });
     const [loading, setLoading] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -25,11 +29,32 @@ export default function Profile() {
     const handleUpdateProfile = async () => {
     try {
             setLoading(true);
-            await updateProfile(formData);
+            setErrors({ displayName: '', email: '' });
+            
+            // Only update username if it changed
+            if (formData.displayName !== user?.displayName) {
+                await handleUpdateUsername(formData.displayName);
+            }
+            
             setIsEditing(false);
             Alert.alert('Success', 'Profile updated successfully');
     } catch (error) {
-            Alert.alert('Error', error.message);
+            // Check for specific error types
+            if (error.message.includes('username is already taken') || error.message.includes('Username already taken')) {
+                setErrors(prev => ({ 
+                    ...prev, 
+                    displayName: 'This username is already taken. Please choose another.'
+                }));
+                Alert.alert('Username Taken', 'This username is already taken. Please choose a different username.');
+            } else if (error.message.includes('email is already registered') || error.message.includes('Email already registered')) {
+                setErrors(prev => ({ 
+                    ...prev, 
+                    email: 'This email is already registered.'
+                }));
+                Alert.alert('Email Registered', 'This email is already registered. Please use a different email.');
+            } else {
+                Alert.alert('Error', error.message);
+            }
         } finally {
             setLoading(false);
     }
@@ -88,20 +113,28 @@ export default function Profile() {
                     <TextInput
                         label="Display Name"
                         value={formData.displayName}
-                        onChangeText={(text) => setFormData(prev => ({ ...prev, displayName: text }))}
+                            onChangeText={(text) => {
+                                setFormData(prev => ({ ...prev, displayName: text }));
+                                setErrors(prev => ({ ...prev, displayName: '' }));
+                            }}
                         placeholder="Enter your display name"
                         leftIcon={<Icon name="user" size={20} color={theme.colors.text.secondary} />}
+                            error={errors.displayName}
                         editable={isEditing}
                     />
 
         <TextInput
                         label="Email"
                         value={formData.email}
-                        onChangeText={(text) => setFormData(prev => ({ ...prev, email: text }))}
+                            onChangeText={(text) => {
+                                setFormData(prev => ({ ...prev, email: text }));
+                                setErrors(prev => ({ ...prev, email: '' }));
+                            }}
                         placeholder="Enter your email"
                         keyboardType="email-address"
                         autoCapitalize="none"
                         leftIcon={<Icon name="envelope" size={20} color={theme.colors.text.secondary} />}
+                            error={errors.email}
                         editable={isEditing}
                     />
 

@@ -1,5 +1,6 @@
 import {
     createUser,
+    checkAvailability,
     getAllUsers,
     getUserById,
     updateUser,
@@ -16,6 +17,20 @@ import {
 } from '../services/userService.js';
 import logger from '../logger.js';
 
+export async function checkAvailabilityController(req, res) {
+    try {
+        const { username = '', email = '' } = req.query;
+        const result = await checkAvailability({ username, email });
+        return res.status(200).json(result);
+    } catch (e) {
+        logger.error("Error in checkAvailabilityController: %s", e.message);
+        return res.status(500).json({
+            error: "Internal Server Error",
+            details: e.message
+        });
+    }
+}
+
 export async function createUserController(req, res) {
     try {
         const userData = req.body;
@@ -23,6 +38,12 @@ export async function createUserController(req, res) {
         res.status(201).json(user);
     } catch (e) {
         logger.error("Error in createUserController: %s", e.message);
+        if (e.message === "Username already taken" || e.message === "Email already registered") {
+            return res.status(409).json({ 
+                error: "Conflict",
+                details: e.message 
+            });
+        }
         if (e.name === 'ValidationError') {
             return res.status(400).json({ 
                 error: "Validation Error",
@@ -83,6 +104,12 @@ export async function updateUserController(req, res) {
         res.status(200).json(user);
     } catch (e) {
         logger.error("Error in updateUserController: %s", e.message);
+        if (e.message === "Username already taken" || e.message === "Email already registered") {
+            return res.status(409).json({ 
+                error: "Conflict",
+                details: e.message 
+            });
+        }
         if (e.name === 'ValidationError') {
             return res.status(400).json({ 
                 error: "Validation Error",

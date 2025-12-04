@@ -3,21 +3,63 @@ import logger from "../logger.js";
 import { Session } from "../models/Session.js";
 import mongoose from 'mongoose';
 
+export async function checkAvailability({ username, email }) {
+    try {
+        logger.info("Checking availability for username: %s, email: %s", username, email);
+        let usernameAvailable = true;
+        let emailAvailable = true;
+
+        if (typeof username === 'string' && username.trim().length > 0) {
+            const existingUserByUsername = await User.findOne({ username });
+            usernameAvailable = !existingUserByUsername;
+        }
+
+        if (typeof email === 'string' && email.trim().length > 0) {
+            const existingUserByEmail = await User.findOne({ email });
+            emailAvailable = !existingUserByEmail;
+        }
+
+        return { usernameAvailable, emailAvailable };
+    } catch (e) {
+        logger.error("Error checking availability: %s", e.message);
+        throw new Error("Error checking availability: " + e.message);
+    }
+}
+
 export async function createUser(userData) {
     try {
-        logger.info("Creating user with data: %j", userData);
+        ///logger.info("Creating user with data: %j", userData);
         if (!userData._id || typeof userData._id !== 'string') {
             throw new Error("Invalid user ID format");
         }
         if (!userData.username || typeof userData.username !== 'string') {
             throw new Error("Invalid username format");
         }
+
+        userData.username = userData.username.trim();
+        if(userData.username.length < 3){
+            throw new Error("Invalid username format");
+        }
+
         if (!userData.email || typeof userData.email !== 'string') {
             throw new Error("Invalid email format");
         }
+        
+        // Check if username already exists -- ignore casing
+        const existingUserByUsername = await User.findOne({username: new RegExp(`^${userData.username}$`, "i")});
+        if (existingUserByUsername) {
+            throw new Error("Username already taken");
+        }
+        
+        // Check if email already exists -- ignore casing
+        const existingUserByEmail = await User.findOne({ email: new RegExp(`^${userData.email}$`, "i") });
+        if (existingUserByEmail) {
+            throw new Error("Email already registered");
+        }
+        
         const newUser = new User(userData);
         const savedUser = await newUser.save();
-        logger.info("User created with id: %s", savedUser._id);
+        ///logger.info("User created with id: %s", savedUser._id);
         return savedUser;
     } catch(e) {
         if (e.message === "Invalid user ID format") {
@@ -32,11 +74,26 @@ export async function createUser(userData) {
             logger.error("Invalid email format: %s", userData.email);
             throw e;
         }
+        if (e.message === "Username already taken") {
+            logger.error("Username already taken: %s", userData.username);
+            throw e;
+        }
+        if (e.message === "Email already registered") {
+            logger.error("Email already registered: %s", userData.email);
+            throw e;
+        }
         if (e instanceof mongoose.Error.ValidationError) {
             logger.error("Validation error creating user: %s", e.message);
             throw new Error("Invalid user data: " + e.message);
         }
         if (e.code === 11000) {
+            // Handle MongoDB duplicate key error
+            const field = Object.keys(e.keyPattern)[0];
+            if (field === 'username') {
+                throw new Error("Username already taken");
+            } else if (field === 'email') {
+                throw new Error("Email already registered");
+            }
             logger.error("Duplicate key error creating user: %s", e.message);
             throw new Error("User already exists");
         }
@@ -95,6 +152,29 @@ export async function updateUser(uid, updateData) {
         if (updateData.email && typeof updateData.email !== 'string') {
             throw new Error("Invalid email format");
         }
+        
+        // Check if username is being updated and if it's already taken by another user
+        if (updateData.username) {
+            const existingUserByUsername = await User.findOne({ 
+                username: updateData.username,
+                _id: { $ne: uid } // Exclude current user
+            });
+            if (existingUserByUsername) {
+                throw new Error("Username already taken");
+            }
+        }
+        
+        // Check if email is being updated and if it's already taken by another user
+        if (updateData.email) {
+            const existingUserByEmail = await User.findOne({ 
+                email: updateData.email,
+                _id: { $ne: uid } // Exclude current user
+            });
+            if (existingUserByEmail) {
+                throw new Error("Email already registered");
+            }
+        }
+        
         const updatedUser = await User.findByIdAndUpdate(uid, updateData, { new: true });
         if (!updatedUser) {
             throw new Error("User not found");
@@ -114,6 +194,14 @@ export async function updateUser(uid, updateData) {
             logger.error("Invalid email format: %s", updateData.email);
             throw e;
         }
+        if (e.message === "Username already taken") {
+            logger.error("Username already taken: %s", updateData.username);
+            throw e;
+        }
+        if (e.message === "Email already registered") {
+            logger.error("Email already registered: %s", updateData.email);
+            throw e;
+        }
         if (e.message === "User not found") {
             logger.error("User not found with id: %s", uid);
             throw e;
@@ -121,6 +209,16 @@ export async function updateUser(uid, updateData) {
         if (e instanceof mongoose.Error.ValidationError) {
             logger.error("Validation error updating user: %s", e.message);
             throw new Error("Invalid user data: " + e.message);
+        }
+        if (e.code === 11000) {
+            // Handle MongoDB duplicate key error
+            const field = Object.keys(e.keyPattern)[0];
+            if (field === 'username') {
+                throw new Error("Username already taken");
+            } else if (field === 'email') {
+                throw new Error("Email already registered");
+            }
+            throw new Error("Duplicate value for unique field");
         }
         logger.error("Error updating user: %s", e.message);
         throw new Error("Error updating user: " + e.message);
@@ -344,7 +442,7 @@ export async function updatePreferences(uid, preferences) {
             throw new Error("User not found");
         }
         console.log('Received preferences:', preferences);
-        user.preferences = preferences;
+        Object.assign(user.preferences, preferences);
         const updatedUser = await user.save();
         logger.info("Preferences updated: %j", updatedUser);
         return updatedUser;

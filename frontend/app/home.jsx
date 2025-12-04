@@ -79,7 +79,13 @@ export default function Home() {
 			setSessions(sessions);
 		} catch (error) {
 			console.error('Error fetching sessions:', error.message);
-			setError(error.message);
+			// Suppress "User not found" errors - backend will auto-create user on next request
+			if (error.message && error.message.toLowerCase().includes('user not found')) {
+				console.warn('[Home] User not found error suppressed, setting empty sessions');
+				setSessions([]);
+			} else {
+				setError(error.message);
+			}
 		} finally {
 			setRefreshing(false);
 		}

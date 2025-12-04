@@ -38,10 +38,13 @@ const getFirebaseErrorMessage = (error) => {
 
 export const signup = async (email, password, username) => {
     try {
+        // 1) Create Firebase user first
         await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(auth.currentUser, { displayName: username });
         
         const user = auth.currentUser;
+        
+        // 2) Try to create DB user
         try {
             await UserService.createUser({
                 _id: user.uid,
@@ -50,13 +53,27 @@ export const signup = async (email, password, username) => {
             });
             return user;
         } catch (error) {
-            try {
-                await deleteUser(user);
-                await signOut(auth);
-            } catch (cleanupError) {
-                throw new Error('Failed to clean up after database error. Please try again.');
+            // Check for specific error messages from backend
+            if (error.message.includes('Username already taken')) {
+                // For username conflicts, delete Firebase user and force user to pick a new one
+                try {
+                    await deleteUser(user);
+                    await signOut(auth);
+                } catch (_) {}
+                throw new Error('This username is already taken. Please choose a different username.');
             }
-            throw new Error('Failed to create user profile. Please try again.');
+            if (error.message.includes('Email already registered')) {
+                // For email conflicts, delete Firebase user
+                try {
+                    await deleteUser(user);
+                    await signOut(auth);
+                } catch (_) {}
+                throw new Error('This email is already registered. Please use a different email or login.');
+            }
+            // For other backend errors (network, server), keep user logged in
+            // Backend middleware will auto-create the DB user on first authenticated request
+            console.warn('[authService] Backend user creation failed; proceeding with logged-in Firebase user:', error.message);
+            return user;
         }
     } catch (error) {
         throw new Error(getFirebaseErrorMessage(error));
@@ -95,6 +112,10 @@ export const updateUsername = async (username) => {
             return user;
         } catch (error) {
             await updateProfile(user, { displayName: oldUsername });
+            // Check for specific error messages from backend
+            if (error.message.includes('Username already taken')) {
+                throw new Error('This username is already taken. Please choose a different username.');
+            }
             throw new Error('Failed to update username. Please try again.');
         }
     } catch (error) {

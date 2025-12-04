@@ -1,6 +1,7 @@
 import express from 'express';
 import {
   createUserController,
+  checkAvailabilityController,
   getAllUsersController,
   getUserByIdController,
   updateUserController,
@@ -26,6 +27,7 @@ import { userValidators } from '../middleware/validators.js';
 const router = express.Router();
 
 // Public routes (no auth required)
+router.get('/availability', userValidators.checkAvailability, checkAvailabilityController);
 router.post('/', userValidators.createUser, createUserController);
 
 // Apply auth middleware to all routes after this point

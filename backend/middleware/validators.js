@@ -17,6 +17,31 @@ export const validate = (req, res, next) => {
 
 // User validation schemas
 export const userValidators = {
+    checkAvailability: [
+        // At least one of username or email must be present
+        query('username')
+            .optional()
+            .isString()
+            .trim()
+            .isLength({ min: 1 })
+            .withMessage('Username must be a non-empty string'),
+        query('email')
+            .optional()
+            .isEmail()
+            .withMessage('Email must be valid')
+            .normalizeEmail(),
+        (req, res, next) => {
+            const { username, email } = req.query;
+            if (!username && !email) {
+                return res.status(400).json({
+                    error: 'Validation Error',
+                    details: 'Provide username and/or email to check availability'
+                });
+            }
+            next();
+        },
+        validate
+    ],
     createUser: [
         body('_id')
             .isString()

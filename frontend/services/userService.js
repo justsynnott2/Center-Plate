@@ -42,7 +42,6 @@ class UserService {
     }
 
     async updatePreferences(userId, preferences) {
-        console.log('Sending preferences:', preferences);
         return baseApiService.patch(`/users/${userId}/preferences`, {preferences});
     }
 

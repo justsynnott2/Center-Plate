@@ -58,7 +58,7 @@ cd CenterPlate
    FIREBASE_CLIENT_EMAIL=your_service_account_email
    FIREBASE_PRIVATE_KEY=your_private_key
    FOURSQUARE_API_KEY=your_foursquare_api_key
-   
+
    ```
 
 3. **Database Setup**

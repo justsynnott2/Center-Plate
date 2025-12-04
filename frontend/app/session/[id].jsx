@@ -276,8 +276,6 @@ const SessionDetails = () => {
         }
     };
 
-
-
     const handleInvite = async (action) => {
         try {
             let session = null;
@@ -361,6 +359,38 @@ const SessionDetails = () => {
             console.error('Error updating location:', error.message);
         } finally {
             setLoadingLocation(false);
+        }
+    };
+
+    const handleEditSession = async (newName) => {
+        try {
+            const updatedSession = await SessionService.updateSession(id, { name: newName.trim() });
+            if (!updatedSession) {
+                const err = new Error('Failed to update session');
+                console.error(err);
+                throw err;
+            }
+
+            setCurrentSession(updatedSession);
+            setError(null);
+            console.log(updatedSession)
+            return updatedSession;
+        } catch (error) {
+            console.error('Error updating session name:', error?.message || error);
+            throw error;
+        }
+    };
+
+    const handleManagePreferences = async (updatedPreferences) => {
+        try {
+            const session = await SessionService.updateSession(id, {preferences: updatedPreferences});
+            if (!session) {
+                throw new Error('Failed to update preferences');
+            }
+            setCurrentSession(session);
+        } catch (error) {
+            setError(error.message);
+            console.error('Error updating preferences:', error.message);
         }
     };
 
@@ -496,8 +526,11 @@ const SessionDetails = () => {
                 return (
                     <SettingsTab
                         handleDeleteSession={handleDeleteSession}
-                        handleEditSession={()=>{}}
-                        handleManagePreferences={()=>{}}
+                        handleEditSession={handleEditSession}
+                        handleManagePreferences={handleManagePreferences}
+                        currentSessionName={currentSession?.name}
+                        user={user}
+                        sessionPreferences={currentSession?.preferences}
                     />
                 );
             default:

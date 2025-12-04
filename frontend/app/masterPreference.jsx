@@ -54,7 +54,7 @@ export default function MasterPreference() {
 			setLoading(true);
 			setError(null);
 			// Implement your save preferences API call here
-			// await saveSessionPreferences(id, preferences);
+			//await saveSessionPreferences(id, preferences);
 			Alert.alert('Success', 'Preferences saved successfully');
 			router.back();
 		} catch (error) {

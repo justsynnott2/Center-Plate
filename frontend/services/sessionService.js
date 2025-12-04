@@ -181,4 +181,4 @@ class SessionService {
     }
 }
 
-export default new SessionService(); 
+export default new SessionService();

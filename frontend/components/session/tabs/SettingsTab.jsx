@@ -1,27 +1,67 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import React, {useState, useEffect} from 'react';
+import { View, StyleSheet, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { theme } from '../../../styles/theme.js';
 import Card from '../../common/Card.jsx';
 import Button from '../../common/Button.jsx';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import TextInput from '../../common/TextInput.jsx';
+import PreferencesForm from '../../preferences/PreferencesForm';
 
-const SettingsTab = ({handleDeleteSession, onEditSession, onManagePreferences}) => {
-
+const SettingsTab = ({handleDeleteSession, handleEditSession, handleManagePreferences, user, currentSessionName, sessionPreferences}) => {
     const [showEditSession, setShowEditSession] = useState(false);
-    const [showManagePreferences, setShowManagePreferences] = useState(false);
+    const [editName, setEditName] = useState('');
 
-    const handleEditSession = () => {
-        onEditSession();
+    const [showManagePreferences, setShowManagePreferences] = useState(false);
+    const [preferences, setPreferences] = useState(sessionPreferences);
+
+    const [validationErrors, setValidationErrors] = useState('');
+
+    useEffect(() => {
+        if(currentSessionName && !showEditSession){
+            setEditName(currentSessionName);
+        }
+    }, [currentSessionName]);
+
+    useEffect(() => {
+        if(!showManagePreferences){
+            setPreferences(sessionPreferences);
+        }
+    }, [showManagePreferences]);
+
+    const editSession = () => {
+        handleEditSession();
         setShowEditSession(false);
     };
 
-    const handleManagePreferences = () => {
-        onManagePreferences();
+    const saveSessionName = async () => {
+        if(!editName || editName.trim().length === 0){
+            setValidationErrors("Session name is required");
+            return;
+        }
+        setValidationErrors('')
+        try {
+            await handleEditSession(editName.trim());
+            setShowEditSession(false);
+        } catch (err) {
+            console.error('Error updating session name:', err);
+        }
+    };
+
+    const managePreferences = () => {
+        handleManagePreferences();
         setShowManagePreferences(false);
     };
 
-    return (
+    const savePreferences = async () => {
+        try {
+            await handleManagePreferences(preferences);
+            setShowManagePreferences(false);
+        } catch (err) {
+            console.error('Error saving preferences:', err);
+        }
+    };
 
+    return (
 
         <Card style={styles.settingsCard}>
             <View style={styles.cardHeader}>
@@ -31,18 +71,58 @@ const SettingsTab = ({handleDeleteSession, onEditSession, onManagePreferences}) 
             <View style={styles.settingsContainer}>
                 <Button
                     title="Edit Session Info"
-                    onPress={() => setShowEditSession(true)}
+                    onPress={() => setShowEditSession(!showEditSession)}
                     variant="outlined"
                     icon="edit"
                     fullWidth
                 />
+
+                {showEditSession &&
+                    <>
+                        <TextInput
+                            label="Session Name"
+                            placeholder="Enter session name"
+                            value={editName}
+                            onChangeText={(text) => setEditName(text)}
+                            icon="users"
+                            error={validationErrors}
+                        />
+                        <Button
+                            title={"Save Name"}
+                            onPress={saveSessionName}
+                            variant="outlined"
+                            icon="sliders"
+                            fullWidth
+                        />
+                    </>
+                }
+
                 <Button
                     title="Manage Preferences"
-                    onPress={() => setShowManagePreferences(true)}
+                    onPress={() => setShowManagePreferences(!showManagePreferences)}
                     variant="outlined"
                     icon="sliders"
                     fullWidth
                 />
+
+                {showManagePreferences &&
+                    <>
+                        <PreferencesForm
+                            preferences={preferences}
+                            onPreferencesChange={setPreferences}
+                            validationErrors={validationErrors}
+                            title="Session Preferences"
+                        />
+                        <Button
+                            title="Save Preferences"
+                            onPress={savePreferences}
+                            variant="outlined"
+                            icon="sliders"
+                            fullWidth
+                        />
+                    </>
+                }
+
                 <Button
                     title="Delete Session"
                     onPress={handleDeleteSession}
@@ -50,6 +130,8 @@ const SettingsTab = ({handleDeleteSession, onEditSession, onManagePreferences}) 
                     icon="trash"
                     fullWidth
                 />
+
+
             </View>
         </Card>
     );
